@@ -1,0 +1,13 @@
+# Ignore Visual Studio project settings
+.vs/
+*.user
+*.suo
+
+# Python-related
+__pycache__/
+*.pyc
+
+# Local folders
+uploads/
+venv/
+.env
