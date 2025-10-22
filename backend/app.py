@@ -1,10 +1,14 @@
 import os
 import uuid
 import whisper
-import ffmpeg
+import numpy as np
+import torchaudio
+import soundfile 
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)  
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
@@ -36,30 +40,22 @@ def transcribe():
     input_path = os.path.join(UPLOAD_FOLDER, str(uuid.uuid4()) + ext)
     file.save(input_path)
 
-    # Convert to WAV if needed
-    if ext == ".mp4":
-        wav_path = input_path.replace(".mp4", ".wav")
-        try:
-            (
-                ffmpeg
-                .input(input_path)
-                .output(wav_path, format='wav')
-                .run(overwrite_output=True, quiet=True)
-            )
-        except Exception as e:
-            return jsonify({"error": f"Error converting to wav: {str(e)}"}), 500
-        os.remove(input_path)
-    else:
-        wav_path = input_path
-
-    # Transcribe using Whisper
+    audio_data = None
+    
     try:
-        result = model.transcribe(wav_path, language="es")
+        audio_data = whisper.load_audio(input_path)
+                
     except Exception as e:
-        return jsonify({"error": f"Error transcribing audio: {str(e)}"}), 500
+        os.remove(input_path)
+        return jsonify({"error": f"Error al decodificar el audio/video. Intenta con un archivo .wav simple: {str(e)}"}), 500
 
-    os.remove(wav_path)
+    try:
+        result = model.transcribe(audio_data, language="es") 
+    except Exception as e:
+        os.remove(input_path)
+        return jsonify({"error": f"Error al transcribir el audio: {str(e)}"}), 500
 
+    os.remove(input_path) 
     return jsonify({"text": result["text"]})
 
 if __name__ == "__main__":
